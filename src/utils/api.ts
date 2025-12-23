@@ -44,7 +44,8 @@ const getBaseUrl = () => {
     // 否则使用当前主机地址
     return `http://${hostname}:3001/api`
   }
-  // 生产环境使用相对路径
+  
+  // 生产环境 - 使用nginx代理，统一通过8080端口访问
   return '/api'
 }
 
@@ -131,4 +132,8 @@ export const authAPI = {
     authApi.get('/user/profile', {
       headers: { Authorization: `Bearer ${token}` },
     }),
+
+  // 更新用户信息
+  updateProfile: (userData: { nickname?: string; avatar?: string }) =>
+    authApi.put('/user/profile', userData),
 }

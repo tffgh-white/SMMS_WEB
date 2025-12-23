@@ -153,7 +153,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { stockAPI } from '@/utils/api'
+import { stockAPI, authAPI } from '@/utils/api'
 
 const userStore = useUserStore()
 
@@ -236,23 +236,28 @@ const saveProfile = async () => {
   saving.value = true
 
   try {
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // 更新用户信息到store
-    const updatedUserInfo = {
-      ...userStore.userInfo!,
+    // 调用API更新用户信息
+    const response = await authAPI.updateProfile({
       nickname: editForm.value.nickname,
-      email: editForm.value.email,
-    }
-
-    userStore.login({
-      token: userStore.token,
-      userInfo: updatedUserInfo,
     })
 
-    isEditing.value = false
-    alert('个人资料更新成功！')
+    if (response.data?.success) {
+      // 更新用户信息到store
+      const updatedUserInfo = {
+        ...userStore.userInfo!,
+        nickname: editForm.value.nickname,
+      }
+
+      userStore.login({
+        token: userStore.token,
+        userInfo: updatedUserInfo,
+      })
+
+      isEditing.value = false
+      alert('个人资料更新成功！')
+    } else {
+      throw new Error(response.data?.message || '更新失败')
+    }
   } catch (error) {
     console.error('更新个人资料失败:', error)
     alert('更新失败，请重试')
@@ -276,24 +281,30 @@ const applyAvatar = async () => {
   }
 
   try {
-    // 模拟API调用更新头像
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // 更新用户头像
-    const updatedUserInfo = {
-      ...userStore.userInfo!,
+    // 调用API更新头像
+    const response = await authAPI.updateProfile({
       avatar: avatarUrlInput.value.trim(),
-    }
-
-    userStore.login({
-      token: userStore.token,
-      userInfo: updatedUserInfo,
     })
 
-    showAvatarOptions.value = false
-    avatarUrlInput.value = ''
-    previewError.value = ''
-    alert('头像更新成功！')
+    if (response.data?.success) {
+      // 更新用户信息到store
+      const updatedUserInfo = {
+        ...userStore.userInfo!,
+        avatar: avatarUrlInput.value.trim(),
+      }
+
+      userStore.login({
+        token: userStore.token,
+        userInfo: updatedUserInfo,
+      })
+
+      showAvatarOptions.value = false
+      avatarUrlInput.value = ''
+      previewError.value = ''
+      alert('头像更新成功！')
+    } else {
+      throw new Error(response.data?.message || '更新失败')
+    }
   } catch (error) {
     console.error('更新头像失败:', error)
     alert('更新头像失败，请重试')

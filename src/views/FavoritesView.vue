@@ -232,7 +232,7 @@ const loadFavorites = async () => {
       } else if (stockListResponse.data.stocks && Array.isArray(stockListResponse.data.stocks)) {
         stocks = stockListResponse.data.stocks
       }
-      
+
       console.log('获取到的股票列表数量:', stocks.length)
       stockStore.setStockList(stocks)
       stocksWithData.value = stocks
@@ -250,10 +250,10 @@ const loadFavorites = async () => {
     lastUpdateTime.value = new Date()
   } catch (error) {
     console.error('加载收藏列表失败:', error)
-    
+
     // 类型安全的错误处理
     const errorMessage = error instanceof Error ? error.message : '未知错误'
-    
+
     // 定义API错误接口
     interface ApiError {
       response?: {
@@ -264,9 +264,9 @@ const loadFavorites = async () => {
         }
       }
     }
-    
+
     const errorResponse = (error as ApiError)?.response?.data || null
-    
+
     console.error('错误详情:', errorMessage, errorResponse)
   } finally {
     loading.value = false
@@ -352,25 +352,28 @@ const confirmAction = async () => {
 onMounted(() => {
   // 如果没有股票列表，先加载
   if (stockStore.stockList.length === 0) {
-    stockAPI.getStockList().then((response) => {
-      if (response.data) {
-        // 外部API直接返回数组或包含stocks字段的数据
-        let stocks = []
-        if (Array.isArray(response.data)) {
-          stocks = response.data
-        } else if (response.data.stocks && Array.isArray(response.data.stocks)) {
-          stocks = response.data.stocks
+    stockAPI
+      .getStockList()
+      .then((response) => {
+        if (response.data) {
+          // 外部API直接返回数组或包含stocks字段的数据
+          let stocks = []
+          if (Array.isArray(response.data)) {
+            stocks = response.data
+          } else if (response.data.stocks && Array.isArray(response.data.stocks)) {
+            stocks = response.data.stocks
+          }
+
+          stockStore.setStockList(stocks)
+          stocksWithData.value = stocks
+          console.log('初始加载股票列表数量:', stocks.length)
+        } else {
+          console.error('初始股票列表API失败: 响应数据为空')
         }
-        
-        stockStore.setStockList(stocks)
-        stocksWithData.value = stocks
-        console.log('初始加载股票列表数量:', stocks.length)
-      } else {
-        console.error('初始股票列表API失败: 响应数据为空')
-      }
-    }).catch((error) => {
-      console.error('初始股票列表API调用失败:', error)
-    })
+      })
+      .catch((error) => {
+        console.error('初始股票列表API调用失败:', error)
+      })
   } else {
     stocksWithData.value = stockStore.stockList
   }
@@ -382,7 +385,7 @@ onMounted(() => {
 
 <style scoped>
 .favorites-page {
-  min-height: 100vh;
+  height: 100%;
   background: transparent;
   padding: 20px;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;

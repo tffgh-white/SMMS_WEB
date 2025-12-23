@@ -14,12 +14,9 @@
             </div>
           </div>
           <div class="button-container">
-            <div
-              class="historical-time-sharing-trading-button"
-              @click="goToDashboard"
-            >
+            <div class="historical-time-sharing-trading-button" @click="goToDashboard">
               历史分时交易
-          </div>
+            </div>
             <FavoriteButton
               v-model="isFavorited"
               :disabled="!userStore.isLoggedIn"
@@ -35,12 +32,14 @@
               {{ formatNumber(realTimeData.p, 2) }}
             </div>
             <div class="change-info">
-              <div class="change-amount" :class="getChangeColor(realTimeData.ud)">
-                {{ getChangeAmount }}
-              </div>
-              <div class="change-percent" :class="getChangeColor(realTimeData.ud)">
-                {{ getChangePercentage }}
-              </div>
+            <div class="change-amount" :class="getComputedChangeColor('amount')">
+              <div class="change-label">涨跌额</div>
+              <div class="change-value">{{ getChangeAmount }}</div>
+            </div>
+            <div class="change-percent" :class="getComputedChangeColor('percent')">
+              <div class="change-label">涨跌幅</div>
+              <div class="change-value">{{ getChangePercentage }}</div>
+            </div>
             </div>
           </div>
 
@@ -247,16 +246,18 @@ const fetchFavoriteList = async () => {
     if (response.data && response.data.success && response.data.data?.favorites) {
       const favorites = response.data.data.favorites
       // 从收藏列表中获取股票代码，然后从股票列表中匹配完整信息
-      const favoriteCodes = favorites.map((fav: { stockCode: string; createdAt: string }) => fav.stockCode)
-      
+      const favoriteCodes = favorites.map(
+        (fav: { stockCode: string; createdAt: string }) => fav.stockCode,
+      )
+
       // 根据收藏代码从当前股票列表中获取完整股票信息
       const allStocks = stockStore.stockList
       favoriteList.value = allStocks
-        .filter(stock => {
+        .filter((stock) => {
           const stockCodePrefix = stock.dm.substring(0, 6)
           return favoriteCodes.includes(stockCodePrefix)
         })
-        .map(stock => ({
+        .map((stock) => ({
           ...stock,
           isFavorited: true,
         }))
@@ -296,7 +297,7 @@ const syncFavoriteStatus = () => {
     const stockCodePrefix = beShowStock.value.dm.substring(0, 6)
     const updatedSelectedStock = {
       ...beShowStock.value,
-      isFavorited: favoriteCodes.has(stockCodePrefix)
+      isFavorited: favoriteCodes.has(stockCodePrefix),
     }
     stockStore.setSelectedStock(updatedSelectedStock)
     isFavorited.value = favoriteCodes.has(stockCodePrefix)
@@ -360,10 +361,10 @@ const fetchStockList = async () => {
         ...stock,
         isFavorited: false,
       }))
-      
+
       // 更新store中的股票列表
       stockStore.setStockList(stocks)
-      
+
       // 同步收藏状态
       syncFavoriteStatus()
 
@@ -372,7 +373,7 @@ const fetchStockList = async () => {
         const firstStock = stocks[0]
         if (firstStock) {
           stockStore.setSelectedStock(firstStock)
-          
+
           if (firstStock?.dm) {
             fetchStockRealTime(firstStock.dm)
           }
@@ -508,21 +509,44 @@ const getChangeColor = (value: number): string => {
   return ''
 }
 
+// 根据计算值判断颜色
+const getComputedChangeColor = (type: 'amount' | 'percent'): string => {
+  if (!realTimeData.value?.p || !realTimeData.value?.yc || 
+      isNaN(realTimeData.value.p) || isNaN(realTimeData.value.yc)) return ''
+  
+  const changeAmount = realTimeData.value.p - realTimeData.value.yc
+  const changePercentage = realTimeData.value.yc === 0 ? 0 : 
+    ((realTimeData.value.p - realTimeData.value.yc) / realTimeData.value.yc) * 100
+  
+  const value = type === 'amount' ? changeAmount : changePercentage
+  
+  if (value > 0) return 'up-color'
+  if (value < 0) return 'down-color'
+  return ''
+}
+
 // 获取涨跌额显示
 const getChangeAmount = computed(() => {
-  if (!realTimeData.value?.ud || isNaN(realTimeData.value.ud)) return '--'
-  const ud = realTimeData.value.ud
-  if (ud > 0) return `+${ud.toFixed(2)}`
-  if (ud < 0) return ud.toFixed(2)
+  if (!realTimeData.value?.p || !realTimeData.value?.yc || 
+      isNaN(realTimeData.value.p) || isNaN(realTimeData.value.yc)) return '--'
+  
+  // 计算涨跌额：当前价格 - 昨收价
+  const changeAmount = realTimeData.value.p - realTimeData.value.yc
+  if (changeAmount > 0) return `+${changeAmount.toFixed(2)}`
+  if (changeAmount < 0) return changeAmount.toFixed(2)
   return '0.00'
 })
 
 // 获取涨跌幅显示
 const getChangePercentage = computed(() => {
-  if (!realTimeData.value?.zf || isNaN(realTimeData.value.zf)) return '--'
-  const zf = realTimeData.value.zf
-  if (zf > 0) return `+${zf.toFixed(2)}%`
-  if (zf < 0) return `${zf.toFixed(2)}%`
+  if (!realTimeData.value?.p || !realTimeData.value?.yc || 
+      isNaN(realTimeData.value.p) || isNaN(realTimeData.value.yc) || 
+      realTimeData.value.yc === 0) return '--'
+  
+  // 计算涨跌幅：(当前价格 - 昨收价) / 昨收价 * 100%
+  const changePercentage = ((realTimeData.value.p - realTimeData.value.yc) / realTimeData.value.yc) * 100
+  if (changePercentage > 0) return `+${changePercentage.toFixed(2)}%`
+  if (changePercentage < 0) return `${changePercentage.toFixed(2)}%`
   return '0.00%'
 })
 
@@ -640,9 +664,9 @@ const fetchStockRealTime = async (stockCode?: string) => {
 const selectStock = (stock: Stock) => {
   // 更新全局store
   stockStore.setSelectedStock(stock)
-  
+
   isFavorited.value = stock.isFavorited || false
-  
+
   if (stock.dm) {
     fetchStockRealTime(stock.dm)
   }
@@ -665,11 +689,11 @@ watch(
         isFavorited: false,
       }))
       stockStore.setStockList(updatedStockList)
-      
+
       if (beShowStock.value) {
         const updatedSelectedStock = {
           ...beShowStock.value,
-          isFavorited: false
+          isFavorited: false,
         }
         stockStore.setSelectedStock(updatedSelectedStock)
       }
@@ -706,12 +730,13 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
-  min-height: 100vh;
+  height: 100%;
 }
 
 .layout-container {
   display: flex;
   gap: 10px;
+  height: 100%;
 }
 
 /* 左边：实时数据展示区 */
@@ -727,18 +752,17 @@ onMounted(() => {
   max-height: calc(100vh - 100px);
 }
 
-/* 右边：股票列表（保持你的原样） */
+/* 右边：股票列表 */
 .simple-stock-list {
   flex: 2;
   background: white;
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  overflow-y: auto;
   max-height: calc(100vh - 100px);
 }
 
-/* 以下是你的原股票列表样式，保持不变 */
+/* 股票列表样式 */
 .title {
   display: flex;
   justify-content: space-between;
@@ -783,7 +807,7 @@ onMounted(() => {
 }
 
 .stock-container-list {
-  height: calc(100vh - 180px);
+  height: 90%;
   overflow-y: auto;
   padding-right: 10px;
 }
@@ -996,20 +1020,38 @@ onMounted(() => {
 
 .change-info {
   text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.change-amount,
+.change-percent {
+  text-align: center;
+  padding: 8px 16px;
+  border-radius: 8px;
+  min-width: 120px;
 }
 
 .change-amount {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
-  margin-bottom: 8px;
 }
 
 .change-percent {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  padding: 6px 15px;
-  border-radius: 8px;
-  display: inline-block;
+}
+
+.change-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.change-value {
+  font-family: 'Courier New', monospace;
 }
 
 .up-color {
@@ -1256,6 +1298,30 @@ onMounted(() => {
 
   .current-price {
     font-size: 40px;
+  }
+
+  .change-info {
+    flex-direction: row;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .change-amount,
+  .change-percent {
+    min-width: 100px;
+    padding: 6px 12px;
+  }
+
+  .change-amount {
+    font-size: 18px;
+  }
+
+  .change-percent {
+    font-size: 16px;
+  }
+
+  .change-label {
+    font-size: 11px;
   }
 
   .metric-row,

@@ -526,6 +526,7 @@ watch(
 .dashboard-view {
   padding: 20px;
   background: #f5f5f5;
+  height: 100%;
   min-height: 100vh;
   box-sizing: border-box;
 }

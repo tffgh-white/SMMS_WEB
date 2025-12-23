@@ -19,13 +19,18 @@ import DashboardComponent from '@/components/DashboardView.vue'
   box-sizing: border-box;
 }
 
+.dashboard-view-in {
+  height: 100%;
+  overflow-y: auto;
+}
+
 /* 自定义滚动条样式 */
 .dashboard-view-in::-webkit-scrollbar {
   width: 8px;
 }
 
 .dashboard-view-in::-webkit-scrollbar-track {
-  background: #ec0101;
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
 
